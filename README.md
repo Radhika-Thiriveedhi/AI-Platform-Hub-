@@ -128,3 +128,5 @@ Or via npm:
 ```bash
 npm test
 ```
+
+<!-- Build and verification complete -->
