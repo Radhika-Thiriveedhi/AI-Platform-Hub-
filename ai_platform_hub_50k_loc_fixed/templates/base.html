@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }} — Production ML Platform{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Production Machine Learning & AI Platform Hub. Access 200+ models, inference consoles, feature stores, and automated pipelines.{% endblock %}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-layout">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="{{ url_for('dashboard.dashboard_home') }}" class="sidebar-brand">
+                    <span class="logo-badge">ML</span>
+                    <div class="logo-text-group">
+                        <span class="sidebar-logo">{{ app_name }}</span>
+                        <span class="sidebar-env">us-east-1 · prod</span>
+                    </div>
+                </a>
+                <button class="sidebar-close" id="sidebarClose" aria-label="Close sidebar">&times;</button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- WORKSPACE -->
+                <div class="nav-section">
+                    <span class="nav-section-label">Workspace</span>
+                    <a href="{{ url_for('dashboard.dashboard_home') }}" class="nav-link {% if request.blueprint == 'dashboard' and request.endpoint == 'dashboard.dashboard_home' %}active{% endif %}">
+                        <span>Overview</span>
+                    </a>
+                    <a href="{{ url_for('main.home') }}" class="nav-link {% if request.endpoint == 'main.home' %}active{% endif %}">
+                        <span>Platform Home</span>
+                    </a>
+                </div>
+
+                <!-- MODELS & INFERENCE -->
+                <div class="nav-section">
+                    <span class="nav-section-label">Models &amp; Inference</span>
+                    <a href="{{ url_for('models.models_list') }}" class="nav-link {% if request.blueprint == 'models' %}active{% endif %}">
+                        <span>Models &amp; Deployments</span>
+                        <span class="nav-badge">5</span>
+                    </a>
+                    <a href="{{ url_for('chat.chat_interface') }}" class="nav-link {% if request.blueprint == 'chat' %}active{% endif %}">
+                        <span>Inference Console</span>
+                    </a>
+                    <a href="{{ url_for('image.image_studio') }}" class="nav-link {% if request.blueprint == 'image' %}active{% endif %}">
+                        <span>Image Studio</span>
+                    </a>
+                    <a href="{{ url_for('analysis.analysis_tools') }}" class="nav-link {% if request.blueprint == 'analysis' %}active{% endif %}">
+                        <span>Text Analysis</span>
+                    </a>
+                </div>
+
+                <!-- DATA & MONITORING -->
+                <div class="nav-section">
+                    <span class="nav-section-label">Data &amp; Monitoring</span>
+                    <a href="{{ url_for('dashboard.dashboard_usage') }}" class="nav-link {% if request.endpoint == 'dashboard.dashboard_usage' %}active{% endif %}">
+                        <span>Usage Analytics</span>
+                    </a>
+                    <a href="{{ url_for('docs.docs_index') }}" class="nav-link {% if request.blueprint == 'docs' %}active{% endif %}">
+                        <span>Docs &amp; API Spec</span>
+                    </a>
+                    <a href="{{ url_for('blog.blog_list') }}" class="nav-link {% if request.blueprint == 'blog' %}active{% endif %}">
+                        <span>Engineering Blog</span>
+                    </a>
+                </div>
+
+                <!-- MANAGEMENT -->
+                <div class="nav-section">
+                    <span class="nav-section-label">Management</span>
+                    <a href="{{ url_for('pricing.pricing_plans') }}" class="nav-link {% if request.blueprint == 'pricing' %}active{% endif %}">
+                        <span>Pricing &amp; Quotas</span>
+                    </a>
+                    <a href="{{ url_for('main.about') }}" class="nav-link {% if request.endpoint == 'main.about' %}active{% endif %}">
+                        <span>Team &amp; Access</span>
+                    </a>
+                    <a href="{{ url_for('main.faq') }}" class="nav-link {% if request.endpoint == 'main.faq' %}active{% endif %}">
+                        <span>FAQ</span>
+                    </a>
+                    <a href="{{ url_for('main.contact') }}" class="nav-link {% if request.endpoint == 'main.contact' %}active{% endif %}">
+                        <span>Support &amp; Contact</span>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- Bottom Cluster & User Widgets -->
+            <div class="sidebar-widgets">
+                <div class="cluster-widget">
+                    <div class="cluster-widget-header">
+                        <span>GPU / Pod Cluster</span>
+                        <span>4/8 Nodes (50%)</span>
+                    </div>
+                    <div class="cluster-progress">
+                        <div class="cluster-progress-fill" style="width: 50%;"></div>
+                    </div>
+                </div>
+
+                <div class="user-profile-widget">
+                    <div class="user-profile-info">
+                        <div class="user-names">
+                            <span class="user-name">Ramya Sri</span>
+                            <span class="user-role">ML Lead &amp; Architect</span>
+                        </div>
+                    </div>
+                    <button class="switch-btn btn-open-user-account" type="button">Switch</button>
+                </div>
+            </div>
+        </aside>
+
+        <div class="app-main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                        <span></span><span></span><span></span>
+                    </button>
+                    <span class="topbar-title">{% block topbar_title %}Overview &amp; Telemetry{% endblock %}</span>
+                </div>
+                <div class="topbar-right">
+                    <span class="runtime-status-badge">
+                        <span class="live-dot"></span>
+                        <span>Gateway: In-Memory Runtime</span>
+                    </span>
+                    <button type="button" class="btn btn-outline btn-sm btn-open-user-account" id="openUserAccountBtn">User Account</button>
+                    <button type="button" class="btn btn-primary btn-sm btn-open-register-model" id="openRegisterModelBtn">+ Register Model</button>
+                </div>
+            </header>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <main class="page-content">
+                {% block content %}{% endblock %}
+            </main>
+
+            <footer class="footer">
+                <div class="footer-grid">
+                    <div class="footer-col">
+                        <h4>{{ app_name }}</h4>
+                        <p>Enterprise Machine Learning &amp; AI Deployment Platform. Scale inference, orchestrate feature stores, and deploy production endpoints.</p>
+                        <div class="gateway-footer-tag">
+                            Local Gateway: <code>http://127.0.0.1:5000</code>
+                        </div>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Models &amp; Inference</h4>
+                        <ul>
+                            <li><a href="{{ url_for('models.models_list') }}">Model Registry</a></li>
+                            <li><a href="{{ url_for('chat.chat_interface') }}">Inference Console</a></li>
+                            <li><a href="{{ url_for('image.image_studio') }}">Generative Studio</a></li>
+                            <li><a href="{{ url_for('analysis.analysis_tools') }}">Text Analysis NLP</a></li>
+                            <li><a href="{{ url_for('dashboard.dashboard_home') }}">Telemetry Dashboard</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Platform &amp; Docs</h4>
+                        <ul>
+                            <li><a href="{{ url_for('docs.docs_index') }}">API Documentation</a></li>
+                            <li><a href="{{ url_for('blog.blog_list') }}">Platform Blog</a></li>
+                            <li><a href="{{ url_for('pricing.pricing_plans') }}">Plans &amp; Quotas</a></li>
+                            <li><a href="{{ url_for('main.faq') }}">FAQ</a></li>
+                            <li><a href="{{ url_for('pages.status') }}">System Status</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Organization</h4>
+                        <ul>
+                            <li><a href="{{ url_for('main.about') }}">Team &amp; Access</a></li>
+                            <li><a href="{{ url_for('main.contact') }}">Contact Engineering</a></li>
+                            <li><a href="{{ url_for('pages.privacy') }}">Privacy Policy</a></li>
+                            <li><a href="{{ url_for('pages.terms') }}">Terms of Service</a></li>
+                            <li><a href="{{ url_for('pages.changelog') }}">Release Changelog</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>ML System Hub &bull; Production Platform &bull; Local Gateway: <code>http://127.0.0.1:5000</code></p>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- ── Modal 1: Register Machine Learning Model ── -->
+    <div class="modal-overlay" id="registerModelModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <h3>Register Model Endpoint</h3>
+                    <p>Deploy a trained machine learning model into the live gateway registry.</p>
+                </div>
+                <button type="button" class="modal-close-btn modal-close-trigger" aria-label="Close dialog">&times;</button>
+            </div>
+            <form id="registerModelForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="regModelName">Model Identifier *</label>
+                        <input type="text" id="regModelName" class="input" placeholder="e.g. Real-Time Fraud Detector v2" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="regModelVersion">Version Tag</label>
+                            <input type="text" id="regModelVersion" class="input" value="2.6.0-rc1" placeholder="e.g. 1.0.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="regModelFramework">Framework</label>
+                            <select id="regModelFramework" class="input">
+                                <option value="PyTorch">PyTorch</option>
+                                <option value="XGBoost">XGBoost</option>
+                                <option value="HuggingFace (ONNX)">HuggingFace (ONNX)</option>
+                                <option value="TensorFlow">TensorFlow</option>
+                                <option value="Scikit-Learn">Scikit-Learn</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="regModelTask">ML Task Type</label>
+                            <select id="regModelTask" class="input">
+                                <option value="Binary Classification">Binary Classification</option>
+                                <option value="Anomaly Detection">Anomaly Detection</option>
+                                <option value="NLP / Text Classification">NLP / Text Classification</option>
+                                <option value="Ranking / RecSys">Ranking / RecSys</option>
+                                <option value="Generative AI / Diffusion">Generative AI / Diffusion</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="regModelStage">Target Stage</label>
+                            <select id="regModelStage" class="input">
+                                <option value="Production">Production</option>
+                                <option value="Canary">Canary</option>
+                                <option value="Staging">Staging</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="regModelTraffic">Traffic Allocation</label>
+                            <select id="regModelTraffic" class="input">
+                                <option value="100% Traffic">100% Traffic</option>
+                                <option value="90% Traffic">90% Traffic</option>
+                                <option value="50% Traffic">50% Traffic</option>
+                                <option value="10% Traffic">10% Traffic</option>
+                                <option value="0% Traffic">0% Traffic (Shadow)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="regModelAccuracy">Test Accuracy</label>
+                            <input type="text" id="regModelAccuracy" class="input" value="97.8%" placeholder="e.g. 96.5%">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline btn-sm modal-close-trigger">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">+ Deploy Endpoint</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Modal 2: User Account & API Credentials ── -->
+    <div class="modal-overlay" id="userAccountModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <h3>User Account &amp; Access Keys</h3>
+                    <p>Manage your active profile, workspace credentials, and monthly inference quotas.</p>
+                </div>
+                <button type="button" class="modal-close-btn modal-close-trigger" aria-label="Close dialog">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="user-card-highlight">
+                    <div class="user-badge-avatar">RS</div>
+                    <div class="user-card-details">
+                        <strong>Ramya Sri</strong>
+                        <span>ML Lead &amp; System Architect &bull; Administrator</span>
+                        <span>Workspace: <code>us-east-1 · Production Cluster</code></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Active Gateway API Key</label>
+                    <div class="api-key-box">
+                        <span id="apiKeyText">aph_live_94f83b1029c4883e1074</span>
+                        <button type="button" class="copy-key-btn" id="copyApiKeyBtn">Copy Key</button>
+                    </div>
+                    <p class="muted mt-sm" style="font-size:0.72rem;">Use this bearer key to authenticate direct HTTP requests to the local gateway API.</p>
+                </div>
+
+                <div class="quota-status-bar">
+                    <div class="quota-status-labels">
+                        <span>Monthly Inference Quota</span>
+                        <span><strong>1,420</strong> / 50,000 requests (2.8% used)</span>
+                    </div>
+                    <div class="quota-progress">
+                        <div class="quota-progress-fill" style="width: 2.8%;"></div>
+                    </div>
+                </div>
+
+                <div class="info-card mt-md" style="margin-bottom:0;">
+                    <h3>Account Permissions</h3>
+                    <p>Full deployment authority across all production endpoints, feature store synchronization, and model registry management.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('main.about') }}" class="btn btn-outline btn-sm">Team Roster</a>
+                <button type="button" class="btn btn-primary btn-sm modal-close-trigger">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

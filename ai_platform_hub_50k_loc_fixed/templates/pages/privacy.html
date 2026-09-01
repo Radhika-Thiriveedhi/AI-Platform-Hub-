@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy – {{ app_name }}{% endblock %}
+{% block content %}
+<section class="section">
+<div class="container narrow">
+    <h1 class="page-title">Privacy Policy</h1>
+    <p>This privacy notice describes the intended data-handling boundaries of the local application. Runtime chat, analysis, contact, usage, and generation metadata can be stored in the application SQLite database. Configure retention, access controls, encryption, and a production privacy notice before deploying publicly.</p>
+    <a href="{{ url_for('main.home') }}" class="btn btn-outline">Back to Home</a>
+</div>
+</section>
+{% endblock %}

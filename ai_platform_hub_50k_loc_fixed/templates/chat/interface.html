@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Chat – {{ app_name }}{% endblock %}
+{% block topbar_title %}Chat Interface{% endblock %}
+{% block content %}
+<div class="chat-layout">
+    <div class="chat-main">
+        <div class="chat-messages" id="chatMessages">
+            {% if history %}
+                {% for msg in history %}
+                <div class="chat-bubble {{ msg.role }}">
+                    <div class="bubble-role">{{ "You" if msg.role == "user" else "Assistant" }}</div>
+                    <div class="bubble-content">{{ msg.content }}</div>
+                    <div class="bubble-footer">
+                        <span class="bubble-time">{{ msg.created_at[:16].replace('T', ' ') }}</span>
+                        {% if msg.role == "assistant" and msg.get("model") %}
+                        <span class="bubble-model">{{ msg.model }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="chat-welcome" id="chatWelcome">
+                    <h3>Start a conversation</h3>
+                    <p>Ask about models, pricing, image generation, or anything on the platform.</p>
+                    <div class="suggested-prompts" id="suggestedPrompts">
+                        <button class="prompt-chip" data-prompt="What are the best models for code generation?">Best models for code</button>
+                        <button class="prompt-chip" data-prompt="Explain the difference between Free and Pro plans">Free vs Pro plans</button>
+                        <button class="prompt-chip" data-prompt="How do I generate an image?">How to generate images</button>
+                        <button class="prompt-chip" data-prompt="Show me top-rated large language models">Top LLMs</button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <div class="chat-input-bar">
+            <div class="chat-input-wrap">
+                <form id="chatForm" style="display:flex;gap:0.5rem">
+                    <textarea id="chatInput" name="message" placeholder="Type your message..." class="chat-input" rows="1" maxlength="6000" required></textarea>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </form>
+                <div class="chat-input-meta">
+                    <span id="charCount">0 / 6,000</span>
+                    <span>{% if provider.remote_configured %}{{ provider.text_model }}{% else %}local assistant{% endif %}</span>
+                </div>
+            </div>
+        </div>
+        <form method="post" action="{{ url_for('chat.chat_clear') }}" class="clear-form">
+            <button type="submit" class="btn btn-ghost btn-sm">Clear history</button>
+        </form>
+    </div>
+    <div class="chat-sidebar">
+        <div class="info-card">
+            <h3>Provider</h3>
+            <p>{% if provider.remote_configured %}Hosted: {{ provider.text_model }}{% else %}Local assistant mode. Set <code>OPENAI_API_KEY</code> to enable hosted LLM.{% endif %}</p>
+        </div>
+        <div class="info-card">
+            <h3>Tips</h3>
+            <ul>
+                <li>Ask about models and categories</li>
+                <li>Inquire about pricing plans</li>
+                <li>Request help with image generation</li>
+                <li>Get navigation guidance</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('chatInput');
+    const messages = document.getElementById('chatMessages');
+    const charCount = document.getElementById('charCount');
+
+    // Auto-resize textarea
+    input.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        charCount.textContent = this.value.length.toLocaleString() + ' / 6,000';
+    });
+
+    // Suggested prompts
+    document.querySelectorAll('.prompt-chip').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            input.value = btn.dataset.prompt;
+            input.dispatchEvent(new Event('input'));
+            form.dispatchEvent(new Event('submit'));
+        });
+    });
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Remove welcome
+        var welcome = document.getElementById('chatWelcome');
+        if (welcome) welcome.remove();
+
+        // Add user bubble
+        messages.insertAdjacentHTML('beforeend',
+            '<div class="chat-bubble user">' +
+            '<div class="bubble-role">You</div>' +
+            '<div class="bubble-content">' + esc(message) + '</div>' +
+            '<div class="bubble-footer"><span class="bubble-time">' + timeNow() + '</span></div>' +
+            '</div>'
+        );
+        input.value = '';
+        input.style.height = 'auto';
+        charCount.textContent = '0 / 6,000';
+        messages.scrollTop = messages.scrollHeight;
+
+        // Typing indicator
+        var typingId = 'typing-' + Date.now();
+        messages.insertAdjacentHTML('beforeend',
+            '<div class="chat-bubble assistant typing-indicator" id="' + typingId + '">' +
+            '<div class="bubble-role">Assistant</div>' +
+            '<div class="bubble-content"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>' +
+            '</div>'
+        );
+        messages.scrollTop = messages.scrollHeight;
+
+        try {
+            var fd = new FormData();
+            fd.append('message', message);
+            var res = await fetch('{{ url_for("chat.chat_send") }}', { method: 'POST', body: fd });
+            var data = await res.json();
+
+            // Remove typing indicator
+            var typing = document.getElementById(typingId);
+            if (typing) typing.remove();
+
+            if (data.response) {
+                var modelBadge = data.model ? '<span class="bubble-model">' + esc(data.model) + '</span>' : '';
+                messages.insertAdjacentHTML('beforeend',
+                    '<div class="chat-bubble assistant">' +
+                    '<div class="bubble-role">Assistant</div>' +
+                    '<div class="bubble-content">' + esc(data.response) + '</div>' +
+                    '<div class="bubble-footer"><span class="bubble-time">' + timeNow() + '</span>' + modelBadge + '</div>' +
+                    '</div>'
+                );
+                messages.scrollTop = messages.scrollHeight;
+            }
+        } catch (err) {
+            var typing = document.getElementById(typingId);
+            if (typing) typing.remove();
+            messages.insertAdjacentHTML('beforeend',
+                '<div class="chat-bubble assistant"><div class="bubble-role">System</div><div class="bubble-content error">Request failed. Please try again.</div></div>'
+            );
+        }
+    });
+
+    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function timeNow() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+})();
+</script>
+{% endblock %}

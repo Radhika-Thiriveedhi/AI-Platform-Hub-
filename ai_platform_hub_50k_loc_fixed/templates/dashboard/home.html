@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Overview &amp; Telemetry — {{ app_name }}{% endblock %}
+{% block topbar_title %}Overview &amp; Telemetry{% endblock %}
+
+{% block content %}
+<!-- 4 Telemetry Stat Cards (from screenshot) -->
+<div class="stats-grid-telemetry">
+    <div class="stat-card-telemetry">
+        <div class="stat-card-label">Active Models</div>
+        <div class="stat-card-value">5</div>
+        <div class="stat-card-subtitle">3 Prod, 1 Canary, 1 Staging</div>
+    </div>
+
+    <div class="stat-card-telemetry">
+        <div class="stat-card-label">Total Inferences (24h)</div>
+        <div class="stat-card-value">1,420</div>
+        <div class="stat-card-subtitle delta-green">+12.4% vs yesterday</div>
+    </div>
+
+    <div class="stat-card-telemetry">
+        <div class="stat-card-label">Avg P95 Latency</div>
+        <div class="stat-card-value">11.4 <span style="font-size:1.1rem;font-weight:500;color:var(--color-muted)">ms</span></div>
+        <div class="stat-card-subtitle sla-target">SLA Target &lt; 25ms</div>
+    </div>
+
+    <div class="stat-card-telemetry">
+        <div class="stat-card-label">Cluster Health</div>
+        <div class="stat-card-value value-green">99.98%</div>
+        <div class="stat-card-subtitle">Zero pod failures</div>
+    </div>
+</div>
+
+<!-- Table 1: Production Model Endpoints (from screenshot) -->
+<div class="table-section-card">
+    <div class="table-section-header">
+        <div class="table-section-title-group">
+            <h2>Production Model Endpoints</h2>
+            <p>Active machine learning services deployed to inference runtime</p>
+        </div>
+        <div class="table-section-actions">
+            <button class="btn btn-outline btn-sm" onclick="location.reload()">Refresh Data</button>
+        </div>
+    </div>
+
+    <div class="data-table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Model Identifier</th>
+                    <th>Version</th>
+                    <th>Framework</th>
+                    <th>Task</th>
+                    <th>Accuracy</th>
+                    <th>Traffic Split</th>
+                    <th>Stage</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="model-name-cell">Customer Churn Predictor</td>
+                    <td><span class="pill-version">2.4.0</span></td>
+                    <td><span class="pill-framework">PyTorch</span></td>
+                    <td>Binary Classification</td>
+                    <td class="metric-accuracy">94.8%</td>
+                    <td><span class="pill-traffic">90% Traffic</span></td>
+                    <td><span class="badge badge-stage-production">Production</span></td>
+                    <td><a href="{{ url_for('chat.chat_interface') }}" class="btn-table-action">Test</a></td>
+                </tr>
+                <tr>
+                    <td class="model-name-cell">Customer Churn Predictor (Canary)</td>
+                    <td><span class="pill-version">2.5.0-rc1</span></td>
+                    <td><span class="pill-framework">PyTorch</span></td>
+                    <td>Binary Classification</td>
+                    <td class="metric-accuracy">96.2%</td>
+                    <td><span class="pill-traffic">10% Traffic</span></td>
+                    <td><span class="badge badge-stage-canary">Canary</span></td>
+                    <td><a href="{{ url_for('chat.chat_interface') }}" class="btn-table-action">Test</a></td>
+                </tr>
+                <tr>
+                    <td class="model-name-cell">Real-Time Fraud Detection</td>
+                    <td><span class="pill-version">3.1.2</span></td>
+                    <td><span class="pill-framework">XGBoost</span></td>
+                    <td>Anomaly Detection</td>
+                    <td class="metric-accuracy">98.2%</td>
+                    <td><span class="pill-traffic">100% Traffic</span></td>
+                    <td><span class="badge badge-stage-production">Production</span></td>
+                    <td><a href="{{ url_for('analysis.analysis_tools') }}" class="btn-table-action">Test</a></td>
+                </tr>
+                <tr>
+                    <td class="model-name-cell">NLP Feedback Sentiment</td>
+                    <td><span class="pill-version">1.0.5</span></td>
+                    <td><span class="pill-framework">HuggingFace (ONNX)</span></td>
+                    <td>NLP / Text Classification</td>
+                    <td class="metric-accuracy">91.5%</td>
+                    <td><span class="pill-traffic">0% Traffic</span></td>
+                    <td><span class="badge badge-stage-staging">Staging</span></td>
+                    <td><a href="{{ url_for('analysis.analysis_tools') }}" class="btn-table-action">Test</a></td>
+                </tr>
+                <tr>
+                    <td class="model-name-cell">Product Recommendation Ranker</td>
+                    <td><span class="pill-version">4.0.1</span></td>
+                    <td><span class="pill-framework">TensorFlow</span></td>
+                    <td>Ranking / RecSys</td>
+                    <td class="metric-accuracy">89.7%</td>
+                    <td><span class="pill-traffic">100% Traffic</span></td>
+                    <td><span class="badge badge-stage-production">Production</span></td>
+                    <td><a href="{{ url_for('models.models_list') }}" class="btn-table-action">Test</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Table 2: Feature Store Online Syncs (from screenshot) -->
+<div class="table-section-card">
+    <div class="table-section-header">
+        <div class="table-section-title-group">
+            <h2>Feature Store Online Syncs</h2>
+            <p>Point-in-time correct entity stores and streaming feature groups</p>
+        </div>
+        <div class="table-section-actions">
+            <a href="{{ url_for('models.models_list') }}" class="btn btn-outline btn-sm">View Features &rarr;</a>
+        </div>
+    </div>
+
+    <div class="data-table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Feature Group</th>
+                    <th>Entity Key</th>
+                    <th>Feature Count</th>
+                    <th>Storage Backend</th>
+                    <th>Sync Schedule</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="code-feature-group">customer_behavioral_features</span></td>
+                    <td><span class="pill-entity-key">user_id</span></td>
+                    <td>14</td>
+                    <td>Redis &rarr; DynamoDB</td>
+                    <td>Hourly</td>
+                    <td><span class="badge badge-stage-production">Synced</span></td>
+                </tr>
+                <tr>
+                    <td><span class="code-feature-group">transaction_velocity_features</span></td>
+                    <td><span class="pill-entity-key">account_id</span></td>
+                    <td>22</td>
+                    <td>Kafka &rarr; Feast</td>
+                    <td>Real-time Streaming</td>
+                    <td><span class="badge badge-stage-production">Synced</span></td>
+                </tr>
+                <tr>
+                    <td><span class="code-feature-group">interaction_session_features</span></td>
+                    <td><span class="pill-entity-key">session_id</span></td>
+                    <td>8</td>
+                    <td>Snowflake / BigQuery</td>
+                    <td>Daily Batch</td>
+                    <td><span class="badge badge-stage-production">Synced</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Live Runtime Usage & Model Registry Activity (from local SQLite DB) -->
+<div class="table-section-card">
+    <div class="table-section-header">
+        <div class="table-section-title-group">
+            <h2>Live Gateway Activity &amp; Invocations</h2>
+            <p>Real-time event logging from local SQLite gateway store</p>
+        </div>
+        <div class="table-section-actions">
+            <a href="{{ url_for('dashboard.dashboard_usage') }}" class="btn btn-outline btn-sm">Detailed Usage Logs</a>
+        </div>
+    </div>
+
+    <div class="data-table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                    <th>Context</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>API Calls Today</strong></td>
+                    <td>{{ "{:,}".format(stats.api_calls_today) }}</td>
+                    <td>Recorded in runtime session</td>
+                    <td><span class="badge badge-stage-production">Active</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Monthly API Volume</strong></td>
+                    <td>{{ "{:,}".format(stats.api_calls_month) }}</td>
+                    <td>Cumulative platform events</td>
+                    <td><span class="badge badge-stage-production">Healthy</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Generated Images</strong></td>
+                    <td>{{ "{:,}".format(stats.images_generated) }}</td>
+                    <td>Studio generations rendered</td>
+                    <td><span class="badge badge-stage-production">Available</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Active Chat Sessions</strong></td>
+                    <td>{{ stats.chat_sessions }}</td>
+                    <td>Inference dialog threads</td>
+                    <td><span class="badge badge-stage-canary">Operational</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Text Analysis – {{ app_name }}{% endblock %}
+{% block topbar_title %}Text Analysis Tools{% endblock %}
+{% block content %}
+<h1 class="page-title">Text Analysis</h1>
+<p class="page-subtitle">Deterministic local NLP. No external data transfer.</p>
+<div class="analysis-layout">
+    <div class="analysis-main">
+        <form id="analysisForm">
+            <div class="form-group">
+                <label for="text">Text to analyze</label>
+                <textarea id="text" name="text" rows="8" maxlength="20000" class="input" placeholder="Paste a product review, article, or report..." required>The new AI platform is excellent. It provides fast, reliable access to multiple language models with transparent pricing. The dashboard is helpful for monitoring usage. However, some advanced features could be difficult to find for new users.</textarea>
+                <div class="form-meta"><span id="textCount">0 / 20,000</span><span>Local engine</span></div>
+            </div>
+            <label>Analysis type</label>
+            <div class="type-grid">
+                {% for t in analysis_types %}
+                <label class="type-option"><input type="radio" name="type" value="{{ t.id }}" {% if loop.first %}checked{% endif %}><span class="type-name">{{ t.name }}</span></label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" id="runBtn">Run Analysis</button>
+        </form>
+        <div id="analysisResult" class="result-area hidden">
+            <h3>Result</h3>
+            <div id="resultView"></div>
+        </div>
+    </div>
+    <aside>
+        <div class="info-card">
+            <h3>Available Analyses</h3>
+            <ul>
+                {% for t in analysis_types %}
+                <li><strong>{{ t.name }}</strong> — {{ t.description }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var ta = document.getElementById('text');
+    var countEl = document.getElementById('textCount');
+    ta.addEventListener('input', function() {
+        countEl.textContent = ta.value.length.toLocaleString() + ' / 20,000';
+    });
+    ta.dispatchEvent(new Event('input'));
+
+    document.getElementById('analysisForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var area = document.getElementById('analysisResult');
+        var view = document.getElementById('resultView');
+        var btn = document.getElementById('runBtn');
+        area.classList.remove('hidden');
+        view.innerHTML = '<div class="loading">Analyzing...</div>';
+        btn.disabled = true;
+
+        try {
+            var fd = new FormData(e.target);
+            var res = await fetch('{{ url_for("analysis.analysis_run") }}', { method: 'POST', body: fd });
+            var data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Analysis failed');
+
+            var header = '<div class="analysis-result-wrap"><div class="analysis-result-header">' +
+                '<h4>' + esc(typeName(data.type)) + '</h4>' +
+                '<span class="meta">' + data.word_count + ' words · ' + data.input_length + ' chars · Engine: ' + esc(data.engine) + '</span>' +
+                '</div>';
+            var body = renderResult(data.type, data.result);
+            view.innerHTML = header + body + '</div>';
+        } catch (err) {
+            view.innerHTML = '<p class="error">' + esc(err.message) + '</p>';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    function typeName(id) {
+        var names = { sentiment: 'Sentiment Analysis', entities: 'Named Entity Recognition', keywords: 'Keyword Extraction', summary: 'Text Summarization', language: 'Language Detection', readability: 'Readability Score', toxicity: 'Toxicity Detection', topics: 'Topic Modeling' };
+        return names[id] || id;
+    }
+
+    function renderResult(type, r) {
+        if (type === 'sentiment') {
+            return '<div class="sentiment-label ' + r.label + '">' + r.label + '</div>' +
+                '<div class="confidence-bar-wrap"><div class="confidence-bar-label"><span>Confidence</span><span>' + (r.score * 100).toFixed(1) + '%</span></div><div class="confidence-bar"><div class="confidence-bar-fill" style="width:' + (r.score * 100) + '%"></div></div></div>' +
+                '<div class="sentiment-signals"><span class="signal-positive">Positive signals: ' + r.positive_signals + '</span><span class="signal-negative">Negative signals: ' + r.negative_signals + '</span></div>' +
+                '<p class="muted mt-sm" style="font-size:0.75rem">' + esc(r.confidence_note) + '</p>';
+        }
+        if (type === 'keywords') {
+            var kws = r.keywords || [];
+            var maxScore = kws.length ? kws[0].score : 1;
+            var html = '<div class="keyword-list">';
+            kws.forEach(function(k) {
+                html += '<div class="keyword-row"><span>' + esc(k.keyword) + ' <span class="muted">(' + k.count + ')</span></span><div class="keyword-bar"><div class="keyword-bar-fill" style="width:' + ((k.score / maxScore) * 100) + '%"></div></div><span class="keyword-score">' + k.score.toFixed(4) + '</span></div>';
+            });
+            return html + '</div>';
+        }
+        if (type === 'entities') {
+            var ents = r.entities || [];
+            if (!ents.length) return '<p class="muted">No entities detected.</p>';
+            var html = '<table class="entity-table"><thead><tr><th>Text</th><th>Type</th><th>Position</th></tr></thead><tbody>';
+            ents.forEach(function(e) {
+                html += '<tr><td>' + esc(e.text) + '</td><td><span class="entity-type">' + esc(e.type) + '</span></td><td class="muted">' + e.start + '-' + e.end + '</td></tr>';
+            });
+            return html + '</tbody></table>';
+        }
+        if (type === 'summary') {
+            return '<p style="line-height:1.8;font-size:0.9rem">' + esc(r.summary) + '</p>';
+        }
+        if (type === 'language') {
+            return '<div class="language-name">' + esc(r.primary_name) + '</div>' +
+                '<div class="language-code">' + esc(r.primary) + '</div>' +
+                '<div class="confidence-bar-wrap mt-md"><div class="confidence-bar-label"><span>Confidence</span><span>' + (r.confidence * 100).toFixed(0) + '%</span></div><div class="confidence-bar"><div class="confidence-bar-fill" style="width:' + (r.confidence * 100) + '%"></div></div></div>';
+        }
+        if (type === 'readability') {
+            return '<div class="readability-score">' + r.flesch_score + '</div>' +
+                '<div class="readability-level">' + esc(r.level) + '</div>' +
+                '<div class="confidence-bar-wrap"><div class="confidence-bar"><div class="confidence-bar-fill" style="width:' + r.flesch_score + '%"></div></div></div>' +
+                '<div class="readability-stats"><div class="readability-stat"><strong>' + r.word_count + '</strong><span>Words</span></div><div class="readability-stat"><strong>' + r.sentence_count + '</strong><span>Sentences</span></div><div class="readability-stat"><strong>' + r.avg_words_per_sentence + '</strong><span>Words/sentence</span></div></div>';
+        }
+        if (type === 'toxicity') {
+            var cls = r.is_toxic ? 'flagged' : 'safe';
+            var label = r.is_toxic ? 'Potentially toxic' : 'No toxicity detected';
+            var html = '<div class="toxicity-label ' + cls + '">' + label + ' (score: ' + r.score + ')</div>';
+            if (r.matched_terms && r.matched_terms.length) {
+                html += '<div class="tox-term-list">';
+                r.matched_terms.forEach(function(t) { html += '<span class="tox-term">' + esc(t) + '</span>'; });
+                html += '</div>';
+            }
+            return html;
+        }
+        if (type === 'topics') {
+            var topics = r.topics || [];
+            if (!topics.length) return '<p class="muted">No clear topics detected.</p>';
+            var html = '';
+            topics.forEach(function(t) {
+                html += '<div class="topic-row"><span class="topic-name">' + esc(t.topic) + '</span><div class="topic-bar-wrap"><div class="topic-bar"><div class="topic-bar-fill" style="width:' + (t.relevance * 100) + '%"></div></div><div class="topic-terms">' + t.matched_terms.join(', ') + '</div></div><span class="topic-score">' + t.relevance.toFixed(2) + '</span></div>';
+            });
+            return html;
+        }
+        return '<pre class="result-json">' + esc(JSON.stringify(r, null, 2)) + '</pre>';
+    }
+
+    function esc(v) { var d = document.createElement('div'); d.textContent = String(v || ''); return d.innerHTML; }
+})();
+</script>
+{% endblock %}

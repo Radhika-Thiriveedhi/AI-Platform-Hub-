@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Image Studio – {{ app_name }}{% endblock %}
+{% block topbar_title %}Image Generation Studio{% endblock %}
+{% block content %}
+<h1 class="page-title">Image Studio</h1>
+<p class="page-subtitle">Generate images with style presets. {% if provider.remote_configured %}Using hosted AI.{% else %}Local renderer active — set OPENAI_API_KEY for hosted generation.{% endif %}</p>
+<div class="studio-layout">
+    <div class="studio-main">
+        <form id="imageForm">
+            <div class="form-group">
+                <label for="prompt">Prompt</label>
+                <textarea id="prompt" name="prompt" rows="4" class="input" maxlength="1500" placeholder="A futuristic smart city with autonomous transit, vertical gardens and sunset light..." required></textarea>
+                <div class="form-meta"><span id="promptCount">0 / 1,500</span><span>{{ provider.provider | capitalize }} mode</span></div>
+            </div>
+            <label>Style</label>
+            <div class="style-grid">
+                {% for style in styles %}
+                <label class="style-option"><input type="radio" name="style" value="{{ style.id }}" {% if loop.first %}checked{% endif %}><span class="style-swatch" style="background:{{ style.preview_color }}"></span><span class="style-name">{{ style.name }}</span></label>
+                {% endfor %}
+            </div>
+            <div class="generation-options">
+                <div class="form-group">
+                    <label for="size">Size</label>
+                    <select id="size" name="size" class="input">
+                        <option value="1024x1024">1024 x 1024</option>
+                        <option value="1536x1024">1536 x 1024</option>
+                        <option value="1024x1536">1024 x 1536</option>
+                        <option value="512x512">512 x 512</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">Generate Image</button>
+        </form>
+        <div id="resultArea" class="result-area hidden">
+            <h3>Result</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+    <aside class="studio-sidebar">
+        <div class="info-card">
+            <h3>Provider</h3>
+            <p>{% if provider.remote_configured %}Hosted AI generation enabled.{% else %}Offline mode. Set <code>OPENAI_API_KEY</code> for hosted generation.{% endif %}</p>
+        </div>
+        {% if suggestions %}
+        <div class="info-card">
+            <h3>Prompt Ideas</h3>
+            <ul>
+                {% for s in suggestions %}
+                <li><a href="#" class="suggestion-link" data-text="{{ s }}">{{ s[:60] }}{% if s|length > 60 %}...{% endif %}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <div class="info-card">
+            <h3>Recent</h3>
+            {% if recent %}
+            <ul class="recent-list">
+                {% for r in recent %}
+                <li>
+                    <strong>{{ r.prompt[:50] }}{% if r.prompt|length > 50 %}...{% endif %}</strong>
+                    <span>{{ r.style_name }} · {{ r.provider }}</span>
+                    {% if r.image_url %}<a href="{{ r.image_url }}" target="_blank">Open</a>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="muted">No generations yet.</p>
+            {% endif %}
+        </div>
+        <div class="info-card">
+            <h3>Tips</h3>
+            <ul>
+                <li>Describe subject, setting and mood</li>
+                <li>Mention lighting or camera angle</li>
+                <li>Use concrete visual details</li>
+                <li>Try several styles and compare</li>
+            </ul>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var form = document.getElementById('imageForm');
+    var promptEl = document.getElementById('prompt');
+    var countEl = document.getElementById('promptCount');
+    var resultArea = document.getElementById('resultArea');
+    var resultContent = document.getElementById('resultContent');
+    var genBtn = document.getElementById('generateBtn');
+
+    promptEl.addEventListener('input', function() {
+        countEl.textContent = promptEl.value.length.toLocaleString() + ' / 1,500';
+    });
+
+    // Suggestion links
+    document.querySelectorAll('.suggestion-link').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            promptEl.value = link.dataset.text;
+            promptEl.dispatchEvent(new Event('input'));
+            promptEl.focus();
+        });
+    });
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        resultArea.classList.remove('hidden');
+        resultContent.innerHTML = '<div class="skeleton skeleton-image"></div><p class="loading mt-sm">Generating your image...</p>';
+        genBtn.disabled = true;
+        genBtn.textContent = 'Generating...';
+
+        try {
+            var fd = new FormData(form);
+            var res = await fetch('{{ url_for("image.image_generate") }}', { method: 'POST', body: fd });
+            var data = await res.json();
+            if (!res.ok || data.status !== 'success') throw new Error(data.error || 'Generation failed');
+
+            resultContent.innerHTML =
+                '<div class="generated-image-frame"><img src="' + esc(data.image_url) + '" alt="Generated image" loading="lazy"></div>' +
+                '<table class="gen-meta-table">' +
+                '<tr><td>Prompt</td><td>' + esc(data.prompt) + '</td></tr>' +
+                '<tr><td>Style</td><td>' + esc(data.style_name) + '</td></tr>' +
+                '<tr><td>Provider</td><td>' + esc(data.provider) + '</td></tr>' +
+                '<tr><td>Size</td><td>' + data.width + ' x ' + data.height + '</td></tr>' +
+                '<tr><td>Seed</td><td>' + data.seed + '</td></tr>' +
+                '</table>' +
+                '<details class="enhanced-prompt-details"><summary>Enhanced prompt</summary><p>' + esc(data.enhanced_prompt) + '</p></details>' +
+                '<div class="result-actions">' +
+                '<a class="btn btn-outline btn-sm" href="' + esc(data.image_url) + '" download>Download</a>' +
+                '<button class="btn btn-ghost btn-sm" id="regenBtn">Regenerate</button>' +
+                '</div>' +
+                '<p class="success-msg mt-sm">' + esc(data.message) + '</p>';
+
+            document.getElementById('regenBtn').onclick = function() { form.dispatchEvent(new Event('submit')); };
+        } catch (err) {
+            resultContent.innerHTML = '<p class="error">' + esc(err.message) + '</p>';
+        } finally {
+            genBtn.disabled = false;
+            genBtn.textContent = 'Generate Image';
+        }
+    });
+
+    function esc(v) { var d = document.createElement('div'); d.textContent = String(v || ''); return d.innerHTML; }
+})();
+</script>
+{% endblock %}
