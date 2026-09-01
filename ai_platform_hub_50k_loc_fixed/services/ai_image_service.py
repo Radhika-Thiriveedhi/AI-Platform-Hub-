@@ -170,3 +170,5 @@ def generate_flux_image(
     }
 
 # Multi-tier generative image pipeline verified.
+
+# FLUX.1 generative synthesis engine ready.

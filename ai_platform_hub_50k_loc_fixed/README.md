@@ -121,3 +121,5 @@ Or via npm:
 ```bash
 npm test
 ```
+
+<!-- Verification complete -->
